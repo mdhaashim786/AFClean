@@ -28,6 +28,9 @@ final class AppDependencies {
     let thumbnails: ThumbnailRepository
     let imageHashes: ImageHashRepository
     let contacts: ContactRepository
+    /// Concrete type: the view layer needs the AVPlayerItem it holds, which the
+    /// protocol deliberately does not expose.
+    let videoPlayback: VideoPlaybackRepositoryImpl
 
     // MARK: - Use cases
 
@@ -38,10 +41,14 @@ final class AppDependencies {
     let fetchLargeVideos: FetchLargeVideosUseCase
     let scanDuplicateContacts: ScanDuplicateContactsUseCase
     let executeCleanup: ExecuteCleanupUseCase
+    let loadPlayableVideo: LoadPlayableVideoUseCase
 
     // MARK: - Shared app-scoped state
 
     let permissionsViewModel: PermissionsViewModel
+    let scans: ScanCoordinator
+    let selection: CleanupSelectionStore
+    let router: AppRouter
 
     init(permissions: PermissionRepository = PermissionRepositoryImpl(),
          deviceStorage: DeviceStorageRepository = DeviceStorageRepositoryImpl()) {
@@ -52,23 +59,91 @@ final class AppDependencies {
         let photoAssets = PhotoAssetRepositoryImpl(source: photoKit, cache: analysisCache)
         let thumbnails = ThumbnailRepositoryImpl(source: photoKit)
         let imageHashes = ImageHashRepositoryImpl(source: photoKit, cache: analysisCache)
-
         let contacts = ContactRepositoryImpl(source: contactStore)
+        let videoPlayback = VideoPlaybackRepositoryImpl(source: photoKit)
 
         self.photoAssets = photoAssets
         self.thumbnails = thumbnails
         self.imageHashes = imageHashes
         self.contacts = contacts
+        self.videoPlayback = videoPlayback
 
         let requestAccess = RequestAccessUseCase(permissions: permissions)
+        let scanSimilarPhotos = ScanSimilarPhotosUseCase(photos: photoAssets, hashes: imageHashes)
+        let fetchScreenshots = FetchScreenshotsUseCase(photos: photoAssets)
+        let fetchLargeVideos = FetchLargeVideosUseCase(photos: photoAssets)
+        let scanDuplicateContacts = ScanDuplicateContactsUseCase(contacts: contacts)
+
         self.requestAccess = requestAccess
         self.getStorageSnapshot = GetStorageSnapshotUseCase(repository: deviceStorage)
-        self.scanSimilarPhotos = ScanSimilarPhotosUseCase(photos: photoAssets, hashes: imageHashes)
-        self.fetchScreenshots = FetchScreenshotsUseCase(photos: photoAssets)
-        self.fetchLargeVideos = FetchLargeVideosUseCase(photos: photoAssets)
-        self.scanDuplicateContacts = ScanDuplicateContactsUseCase(contacts: contacts)
+        self.scanSimilarPhotos = scanSimilarPhotos
+        self.fetchScreenshots = fetchScreenshots
+        self.fetchLargeVideos = fetchLargeVideos
+        self.scanDuplicateContacts = scanDuplicateContacts
         self.executeCleanup = ExecuteCleanupUseCase(photos: photoAssets, contacts: contacts)
+        self.loadPlayableVideo = LoadPlayableVideoUseCase(repository: videoPlayback)
 
-        self.permissionsViewModel = PermissionsViewModel(access: requestAccess)
+        let permissionsViewModel = PermissionsViewModel(access: requestAccess)
+        self.permissionsViewModel = permissionsViewModel
+        self.selection = CleanupSelectionStore()
+        self.router = AppRouter()
+        self.scans = ScanCoordinator(
+            scanSimilarPhotos: scanSimilarPhotos,
+            fetchScreenshots: fetchScreenshots,
+            fetchLargeVideos: fetchLargeVideos,
+            scanDuplicateContacts: scanDuplicateContacts,
+            permissions: permissionsViewModel,
+            photoAssets: photoAssets,
+            contacts: contacts
+        )
+    }
+
+    // MARK: - View model factories
+
+    func makeDashboardViewModel() -> DashboardViewModel {
+        DashboardViewModel(
+            getStorageSnapshot: getStorageSnapshot,
+            scans: scans,
+            selection: selection,
+            permissions: permissionsViewModel,
+            thumbnails: thumbnails,
+            router: router
+        )
+    }
+
+    func makeSimilarPhotosViewModel() -> SimilarPhotosViewModel {
+        SimilarPhotosViewModel(
+            scans: scans,
+            selection: selection,
+            permissions: permissionsViewModel,
+            thumbnails: thumbnails
+        )
+    }
+
+    func makeScreenshotsViewModel() -> ScreenshotsViewModel {
+        ScreenshotsViewModel(
+            scans: scans,
+            selection: selection,
+            permissions: permissionsViewModel,
+            thumbnails: thumbnails
+        )
+    }
+
+    func makeLargeVideosViewModel() -> LargeVideosViewModel {
+        LargeVideosViewModel(
+            scans: scans,
+            selection: selection,
+            permissions: permissionsViewModel,
+            thumbnails: thumbnails,
+            loadPlayable: loadPlayableVideo
+        )
+    }
+
+    func makeDuplicateContactsViewModel() -> DuplicateContactsViewModel {
+        DuplicateContactsViewModel(
+            scans: scans,
+            selection: selection,
+            permissions: permissionsViewModel
+        )
     }
 }
