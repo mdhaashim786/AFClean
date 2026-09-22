@@ -16,7 +16,7 @@ struct ThumbnailRepositoryImpl: ThumbnailRepository {
 
     func thumbnail(for assetID: String, maxPixel: Int) async -> CGImage? {
         guard let asset = source.assets(withIdentifiers: [assetID]).first else { return nil }
-        return await source.image(for: asset, maxPixel: maxPixel, fast: false)
+        return await source.image(for: asset, maxPixel: maxPixel)
     }
 
     func startCaching(assetIDs: [String], maxPixel: Int) {

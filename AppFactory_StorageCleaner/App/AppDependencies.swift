@@ -48,6 +48,7 @@ final class AppDependencies {
     let permissionsViewModel: PermissionsViewModel
     let scans: ScanCoordinator
     let selection: CleanupSelectionStore
+    let results: CleanupResultStore
     let router: AppRouter
 
     init(permissions: PermissionRepository = PermissionRepositoryImpl(),
@@ -86,6 +87,7 @@ final class AppDependencies {
         let permissionsViewModel = PermissionsViewModel(access: requestAccess)
         self.permissionsViewModel = permissionsViewModel
         self.selection = CleanupSelectionStore()
+        self.results = CleanupResultStore()
         self.router = AppRouter()
         self.scans = ScanCoordinator(
             scanSimilarPhotos: scanSimilarPhotos,
@@ -144,6 +146,18 @@ final class AppDependencies {
             scans: scans,
             selection: selection,
             permissions: permissionsViewModel
+        )
+    }
+
+    func makeReviewViewModel() -> ReviewViewModel {
+        ReviewViewModel(
+            selection: selection,
+            thumbnails: thumbnails,
+            executeCleanup: executeCleanup,
+            getStorageSnapshot: getStorageSnapshot,
+            scans: scans,
+            results: results,
+            router: router
         )
     }
 }

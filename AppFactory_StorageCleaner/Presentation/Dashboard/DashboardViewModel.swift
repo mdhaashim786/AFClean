@@ -62,7 +62,28 @@ final class DashboardViewModel {
         if !scans.hasEverScanned {
             scans.scanAll()
         }
+        #if DEBUG
+        applyDebugLaunchRouteIfNeeded()
+        #endif
     }
+
+    #if DEBUG
+    /// Waits for the scans to settle, then jumps to the requested screen.
+    private func applyDebugLaunchRouteIfNeeded() {
+        guard let route = DebugLaunchRoute.requested() else { return }
+        Task {
+            while scans.isScanning {
+                try? await Task.sleep(nanoseconds: 200_000_000)
+            }
+            if DebugLaunchRoute.shouldPreselect() {
+                selection.select(scans.similarGroups.flatMap(\.others))
+                selection.select(scans.screenshots)
+                selection.select(scans.videos)
+            }
+            router.push(route)
+        }
+    }
+    #endif
 
     func refreshStorage() {
         storage = getStorageSnapshot()

@@ -22,6 +22,10 @@ struct SimilarPhotosView: View {
         ) {
             content
         }
+        // Expand before the background: an empty state is small, and
+        // without this the canvas only paints behind the text rather than
+        // the whole screen.
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(AFBackground())
         .navigationTitle(CleanCategory.similarPhotos.title)
         .navigationBarTitleDisplayMode(.inline)
@@ -93,7 +97,7 @@ struct SimilarPhotosView: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             AFSectionHeader(
                 title: group.reason.title,
-                subtitle: "\(group.count) photos · \(Format.bytes(group.reclaimableBytes)) can be freed"
+                subtitle: "\(Format.count(group.count, singular: "photo")) · \(Format.bytes(group.reclaimableBytes)) can be freed"
             ) {
                 Button(viewModel.areAllOthersSelected(in: group) ? "Keep all" : "Keep best") {
                     viewModel.toggleAllOthers(in: group)

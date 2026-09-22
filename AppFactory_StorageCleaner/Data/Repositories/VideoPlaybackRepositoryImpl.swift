@@ -8,9 +8,10 @@ import Photos
 
 /// Prepares videos for preview.
 ///
-/// Like every other PhotoKit request in the app, network access is off: a
-/// preview should never quietly pull a multi-gigabyte original down from
-/// iCloud. When only a cloud copy exists we say so instead.
+/// This is the one place network access stays off. Thumbnails may be fetched
+/// from iCloud because they are a few kilobytes each, but a video original can
+/// be gigabytes, and a preview tap should never start that download. When only
+/// a cloud copy exists we say so instead.
 final class VideoPlaybackRepositoryImpl: VideoPlaybackRepository, @unchecked Sendable {
 
     private let source: PhotoKitDataSource

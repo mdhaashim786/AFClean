@@ -3,6 +3,7 @@
 //  AF Clean
 //
 
+import os
 import Photos
 import UIKit
 
@@ -66,17 +67,43 @@ final class PhotoKitDataSource: NSObject, @unchecked Sendable {
 
     /// Requests a thumbnail.
     ///
-    /// `isNetworkAccessAllowed` is deliberately off everywhere: the brief says
-    /// everything runs on device, and letting PhotoKit silently pull originals
-    /// from iCloud would make a large scan both slow and expensive.
-    func image(for asset: PHAsset, maxPixel: Int, fast: Bool) async -> CGImage? {
+    /// Network access is allowed here, and that is a deliberate correctness
+    /// decision rather than an oversight. When "Optimise iPhone Storage" is on —
+    /// which is the default — most of the library exists locally only as a
+    /// placeholder, and every request with networking disabled fails with
+    /// `PHPhotosError.networkAccessRequired` (3303). Turning it off would mean
+    /// the scan silently found nothing for exactly the users who most need to
+    /// free up space.
+    ///
+    /// This does not conflict with keeping the user's data on device: nothing
+    /// is uploaded or sent anywhere. We only ask iCloud for a small rendition
+    /// of the user's own photo, sized to `maxPixel` — a few kilobytes for the
+    /// 64px thumbnails the hash pass uses, never the full original.
+    ///
+    /// Video playback is the exception and passes `allowsNetwork: false`, since
+    /// previewing must not pull down a multi-gigabyte original.
+    func image(
+        for asset: PHAsset,
+        maxPixel: Int,
+        allowsNetwork: Bool = true
+    ) async -> CGImage? {
         let options = PHImageRequestOptions()
-        options.isNetworkAccessAllowed = false
+        options.isNetworkAccessAllowed = allowsNetwork
         options.isSynchronous = false
+        // Downsampling quality is irrelevant at these sizes, and `.fast` is
+        // what keeps a full-library pass cheap.
         options.resizeMode = .fast
-        // .fastFormat calls back exactly once, which is what the hashing pass
-        // wants; display can afford to wait for the better rendition.
-        options.deliveryMode = fast ? .fastFormat : .highQualityFormat
+        // `.highQualityFormat` rather than `.fastFormat`, even for hashing.
+        //
+        // `.fastFormat` only ever returns an *already cached* rendition. On a
+        // library PhotoKit has not built thumbnails for, it returns no image at
+        // all and reports PHPhotosError.networkAccessRequired (3303) — even
+        // when the original is sitting locally on disk. Using it made the scan
+        // find nothing on a fresh install. `.highQualityFormat` decodes and
+        // downsamples on demand, and still serves from the thumbnail cache when
+        // one exists. `.opportunistic` is avoided because it calls back
+        // repeatedly, which makes single-resume continuation handling fragile.
+        options.deliveryMode = .highQualityFormat
 
         let target = CGSize(width: maxPixel, height: maxPixel)
 
@@ -88,11 +115,13 @@ final class PhotoKitDataSource: NSObject, @unchecked Sendable {
                 contentMode: .aspectFill,
                 options: options
             ) { image, info in
-                // Opportunistic delivery can call back more than once; only the
-                // first non-degraded result should resume the continuation.
-                let isDegraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
-                guard !isDegraded || image == nil else { return }
+                // Resume on the first callback whatever it contains. The
+                // delivery modes above only ever produce one, so waiting for a
+                // "better" result would simply hang the task forever.
                 guard hasResumed.claim() else { return }
+                if image == nil, let error = info?[PHImageErrorKey] as? NSError {
+                    AFLog.scan.error("thumbnail failed: \(error.domain) \(error.code)")
+                }
                 continuation.resume(returning: image?.cgImage)
             }
         }

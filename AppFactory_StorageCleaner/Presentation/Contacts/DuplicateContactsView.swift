@@ -17,6 +17,10 @@ struct DuplicateContactsView: View {
         ) {
             content
         }
+        // Expand before the background: an empty state is small, and
+        // without this the canvas only paints behind the text rather than
+        // the whole screen.
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(AFBackground())
         .navigationTitle(CleanCategory.duplicateContacts.title)
         .navigationBarTitleDisplayMode(.inline)
@@ -119,7 +123,7 @@ private struct ContactGroupCard: View {
                 Text(group.keeper.displayName)
                     .font(Theme.Typography.headline)
                     .foregroundStyle(Theme.Palette.textPrimary)
-                Text("\(group.count) cards · \(group.reasonLabel)")
+                Text("\(Format.count(group.count, singular: "card")) · \(group.reasonLabel)")
                     .font(Theme.Typography.caption)
                     .foregroundStyle(Theme.Palette.textSecondary)
             }

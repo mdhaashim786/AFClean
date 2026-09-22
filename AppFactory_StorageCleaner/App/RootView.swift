@@ -49,16 +49,17 @@ struct RootView: View {
             }
 
         case .review:
-            // Built in the next phase.
-            AFEmptyState(
-                systemImage: "checklist",
-                title: "Review",
-                message: "The review and delete step lands next."
-            )
-            .background(AFBackground())
+            ReviewView(viewModel: dependencies.makeReviewViewModel())
 
         case .result:
-            EmptyView()
+            CleanResultView(
+                outcome: dependencies.results.outcome,
+                storage: dependencies.results.storageAfter,
+                onDone: {
+                    dependencies.results.clear()
+                    dependencies.router.popToRoot()
+                }
+            )
         }
     }
 }

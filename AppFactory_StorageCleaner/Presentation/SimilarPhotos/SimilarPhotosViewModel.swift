@@ -40,7 +40,7 @@ final class SimilarPhotosViewModel {
     var summary: String {
         let removable = groups.totalRemovableCount
         guard removable > 0 else { return "Nothing to clean" }
-        return "\(groups.count) groups · \(Format.count(removable, singular: "photo")) · \(Format.bytes(groups.totalReclaimableBytes))"
+        return "\(Format.count(groups.count, singular: "group")) · \(Format.count(removable, singular: "photo")) · \(Format.bytes(groups.totalReclaimableBytes))"
     }
 
     var areAllOthersSelected: Bool {

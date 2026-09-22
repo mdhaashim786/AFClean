@@ -55,8 +55,12 @@ final class ScanCoordinator {
     private let fetchLargeVideos: FetchLargeVideosUseCase
     private let scanDuplicateContacts: ScanDuplicateContactsUseCase
     private let permissions: PermissionsViewModel
+    private let photoAssets: PhotoAssetRepository
+    private let contacts: ContactRepository
 
     private var tasks: [CleanCategory: Task<Void, Never>] = [:]
+    private var hasRegisteredPhotoObserver = false
+    private var hasRegisteredContactObserver = false
 
     init(
         scanSimilarPhotos: ScanSimilarPhotosUseCase,
@@ -72,16 +76,34 @@ final class ScanCoordinator {
         self.fetchLargeVideos = fetchLargeVideos
         self.scanDuplicateContacts = scanDuplicateContacts
         self.permissions = permissions
+        self.photoAssets = photoAssets
+        self.contacts = contacts
 
         for category in CleanCategory.allCases {
             states[category] = .idle
         }
+    }
 
-        photoAssets.observeLibraryChanges { [weak self] in
-            Task { @MainActor in self?.markStale() }
-        }
-        contacts.observeContactChanges { [weak self] in
-            Task { @MainActor in self?.markStale() }
+    /// Change observers are registered lazily, never in `init`.
+    ///
+    /// Registering as a PHPhotoLibrary observer touches `PHPhotoLibrary.shared()`,
+    /// which is enough to make iOS raise its permission alert. Doing that at
+    /// startup would fire the system prompt over our own priming screen —
+    /// exactly the thing the priming screen exists to avoid — and would spend
+    /// the single prompt iOS allows before the user had been told why.
+    private func registerObserversIfNeeded(for category: CleanCategory) {
+        if category == .duplicateContacts {
+            guard !hasRegisteredContactObserver else { return }
+            hasRegisteredContactObserver = true
+            contacts.observeContactChanges { [weak self] in
+                Task { @MainActor in self?.markStale() }
+            }
+        } else {
+            guard !hasRegisteredPhotoObserver else { return }
+            hasRegisteredPhotoObserver = true
+            photoAssets.observeLibraryChanges { [weak self] in
+                Task { @MainActor in self?.markStale() }
+            }
         }
     }
 
@@ -167,6 +189,10 @@ final class ScanCoordinator {
             return
         }
 
+        // Safe now: we only reach here with access already granted, so
+        // registering cannot surprise the user with a prompt.
+        registerObserversIfNeeded(for: category)
+
         states[category] = .scanning(ScanProgress(phase: .fetching))
 
         tasks[category] = Task { [weak self] in
@@ -178,7 +204,7 @@ final class ScanCoordinator {
         switch category {
         case .similarPhotos:
             let groups = await scanSimilarPhotos { [weak self] progress in
-                Task { @MainActor in self?.states[.similarPhotos] = .scanning(progress) }
+                Task { @MainActor in self?.apply(progress, to: .similarPhotos) }
             }
             guard !Task.isCancelled else { return }
             similarGroups = groups
@@ -206,6 +232,18 @@ final class ScanCoordinator {
         }
 
         states[category] = .ready
+    }
+
+    /// Applies a progress update, but only while the category is still
+    /// scanning.
+    ///
+    /// Progress is delivered from a background task and hops to the main actor,
+    /// so the final update can arrive *after* the scan has already finished and
+    /// set `.ready`. Without this guard that late update reinstates
+    /// `.scanning`, leaving the card stuck on a full progress bar forever.
+    private func apply(_ progress: ScanProgress, to category: CleanCategory) {
+        guard states[category]?.isScanning == true else { return }
+        states[category] = .scanning(progress)
     }
 
     func cancelAll() {

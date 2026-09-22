@@ -40,29 +40,39 @@ struct CategoryCard: View {
 
     // MARK: - Pieces
 
+    /// Icon and chevron sit on their own row above the title.
+    ///
+    /// Putting them beside the title squeezed it into a column narrow enough to
+    /// break a single word across lines ("Screensh / ots"). Giving the title
+    /// the full card width fixes that without shrinking the type.
     private var header: some View {
-        HStack(spacing: Theme.Spacing.m) {
-            Image(systemName: category.systemImage)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(category.accent)
-                .frame(width: 34, height: 34)
-                .background(category.accent.opacity(0.14), in: .rect(cornerRadius: Theme.Radius.small))
+        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+            HStack(spacing: Theme.Spacing.s) {
+                Image(systemName: category.systemImage)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(category.accent)
+                    .frame(width: 34, height: 34)
+                    .background(category.accent.opacity(0.14), in: .rect(cornerRadius: Theme.Radius.small))
+
+                Spacer(minLength: 0)
+
+                if state.isScanning {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(Theme.Palette.textSecondary)
+                } else {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Theme.Palette.textTertiary)
+                }
+            }
 
             Text(category.title)
                 .font(Theme.Typography.headline)
                 .foregroundStyle(Theme.Palette.textPrimary)
-
-            Spacer(minLength: 0)
-
-            if state.isScanning {
-                ProgressView()
-                    .controlSize(.small)
-                    .tint(Theme.Palette.textSecondary)
-            } else {
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Theme.Palette.textTertiary)
-            }
+                .lineLimit(2, reservesSpace: true)
+                .minimumScaleFactor(0.85)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 

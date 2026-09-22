@@ -18,6 +18,10 @@ struct LargeVideosView: View {
         ) {
             content
         }
+        // Expand before the background: an empty state is small, and
+        // without this the canvas only paints behind the text rather than
+        // the whole screen.
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(AFBackground())
         .navigationTitle(CleanCategory.largeVideos.title)
         .navigationBarTitleDisplayMode(.inline)

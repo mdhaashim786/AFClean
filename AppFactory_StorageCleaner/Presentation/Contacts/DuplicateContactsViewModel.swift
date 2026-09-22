@@ -31,7 +31,7 @@ final class DuplicateContactsViewModel {
     var summary: String {
         guard !groups.isEmpty else { return "Nothing to clean" }
         let duplicates = groups.reduce(0) { $0 + $1.duplicates.count }
-        return "\(groups.count) groups · \(Format.count(duplicates, singular: "duplicate"))"
+        return "\(Format.count(groups.count, singular: "group")) · \(Format.count(duplicates, singular: "duplicate"))"
     }
 
     func action(for group: ContactDuplicateGroup) -> CleanupPlan.ContactOperation.Action? {

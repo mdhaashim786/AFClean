@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import os
 
 /// Fetch photos, fingerprint them, group the matches, then verify the weakest
 /// groups before showing them.
@@ -66,8 +67,16 @@ struct ScanSimilarPhotosUseCase: Sendable {
             )
         )
 
+        AFLog.scan.info(
+            "similar: fetched \(assets.count) photos, hashed \(fingerprints.count)"
+        )
+
         let groups = grouper.group(assets: assets, hashes: fingerprints)
         let verified = await verify(groups)
+
+        AFLog.scan.info(
+            "similar: \(groups.count) groups before verify, \(verified.count) after"
+        )
 
         onProgress(
             ScanProgress(

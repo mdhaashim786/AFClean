@@ -77,7 +77,7 @@ struct ImageHashRepositoryImpl: ImageHashRepository {
             limit: concurrency,
             transform: { media -> (String, UInt64, MediaAsset)? in
                 guard let box = assetsByID[media.id] else { return nil }
-                guard let image = await source.image(for: box.value, maxPixel: pixels, fast: true),
+                guard let image = await source.image(for: box.value, maxPixel: pixels),
                       let hash = DifferenceHasher.hash(of: image)
                 else { return nil }
                 return (media.id, hash, media)
@@ -117,8 +117,8 @@ struct ImageHashRepositoryImpl: ImageHashRepository {
         else { return nil }
 
         let pixels = Self.featureThumbnailPixels
-        guard let leftImage = await source.image(for: left, maxPixel: pixels, fast: true),
-              let rightImage = await source.image(for: right, maxPixel: pixels, fast: true),
+        guard let leftImage = await source.image(for: left, maxPixel: pixels),
+              let rightImage = await source.image(for: right, maxPixel: pixels),
               let leftPrint = FeaturePrintComparator.featurePrint(for: leftImage),
               let rightPrint = FeaturePrintComparator.featurePrint(for: rightImage)
         else { return nil }
