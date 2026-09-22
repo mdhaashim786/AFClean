@@ -40,6 +40,7 @@ struct ScreenshotsView: View {
             }
         }
         .onAppear { viewModel.onAppear() }
+        .onDisappear { viewModel.onDisappear() }
     }
 
     @ViewBuilder

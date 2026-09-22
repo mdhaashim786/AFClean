@@ -62,9 +62,19 @@ final class SimilarPhotosViewModel {
 
     // MARK: - Intents
 
+    private static let prefetchLimit = 240
+
     func onAppear() {
         scans.scanIfNeeded(.similarPhotos)
         applyInitialSelectionIfNeeded()
+        thumbnails.startCaching(
+            assetIDs: Array(groups.flatMap(\.assets).prefix(Self.prefetchLimit)).map(\.id),
+            maxPixel: 300
+        )
+    }
+
+    func onDisappear() {
+        thumbnails.stopCachingAll()
     }
 
     /// Pre-selects every photo except the best one in each group, which is the
@@ -82,6 +92,7 @@ final class SimilarPhotosViewModel {
         // best would let a group be wiped out entirely by accident.
         selection.toggle(asset)
         ensureSurvivor(in: group)
+        Haptics.select()
     }
 
     func toggleAllOthers(in group: PhotoGroup) {

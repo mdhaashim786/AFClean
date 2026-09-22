@@ -40,6 +40,7 @@ struct SimilarPhotosView: View {
             }
         }
         .onAppear { viewModel.onAppear() }
+        .onDisappear { viewModel.onDisappear() }
     }
 
     @ViewBuilder

@@ -57,6 +57,7 @@ final class LargeVideosViewModel {
 
     func toggle(_ asset: MediaAsset) {
         selection.toggle(asset)
+        Haptics.select()
     }
 
     func toggleSelectAll() {

@@ -50,6 +50,7 @@ final class DuplicateContactsViewModel {
     /// Deleted to fall back on, so every group is an explicit decision.
     func choose(_ action: CleanupPlan.ContactOperation.Action, for group: ContactDuplicateGroup) {
         selection.toggleDecision(action, for: group)
+        Haptics.select()
     }
 
     func mergeAll() {

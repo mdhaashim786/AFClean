@@ -82,8 +82,23 @@ final class ScreenshotsViewModel {
 
     // MARK: - Intents
 
+    /// How many thumbnails to warm at once.
+    ///
+    /// PHCachingImageManager decodes ahead of the scroll, which is what keeps a
+    /// long grid smooth. Capped rather than unbounded: warming every screenshot
+    /// in a large library would spend memory on rows the user may never reach.
+    private static let prefetchLimit = 240
+
     func onAppear() {
         scans.scanIfNeeded(.screenshots)
+        thumbnails.startCaching(
+            assetIDs: Array(screenshots.prefix(Self.prefetchLimit)).map(\.id),
+            maxPixel: 300
+        )
+    }
+
+    func onDisappear() {
+        thumbnails.stopCachingAll()
     }
 
     /// Nothing is pre-selected here. Unlike a duplicate group, a screenshot has
@@ -91,6 +106,7 @@ final class ScreenshotsViewModel {
     /// the user picks every item deliberately.
     func toggle(_ asset: MediaAsset) {
         selection.toggle(asset)
+        Haptics.select()
     }
 
     func toggleAll(in section: Section) {

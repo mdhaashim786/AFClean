@@ -17,6 +17,15 @@ final class PhotoKitDataSource: NSObject, @unchecked Sendable {
     private let handlerLock = NSLock()
     private var isObserving = false
 
+    /// Identifier to asset, filled in by every fetch.
+    ///
+    /// Without this, each thumbnail in a grid resolves its own asset with a
+    /// separate `fetchAssets(withLocalIdentifiers:)` — hundreds of individual
+    /// Photos database queries while scrolling a large library. Every asset the
+    /// UI can show has already come through a fetch, so it is already here.
+    private var assetsByIdentifier: [String: PHAsset] = [:]
+    private let assetLock = NSLock()
+
     // MARK: - Fetching
 
     /// Every image that is not a screenshot, oldest first so the scanner's
@@ -55,12 +64,48 @@ final class PhotoKitDataSource: NSObject, @unchecked Sendable {
         var assets: [PHAsset] = []
         assets.reserveCapacity(result.count)
         result.enumerateObjects { asset, _, _ in assets.append(asset) }
+        remember(assets)
         return assets
     }
 
+    private func remember(_ assets: [PHAsset]) {
+        guard !assets.isEmpty else { return }
+        assetLock.lock()
+        for asset in assets {
+            assetsByIdentifier[asset.localIdentifier] = asset
+        }
+        assetLock.unlock()
+    }
+
+    /// Resolves identifiers, preferring the memo and only querying PhotoKit for
+    /// whatever is genuinely unknown.
     func assets(withIdentifiers ids: [String]) -> [PHAsset] {
         guard !ids.isEmpty else { return [] }
-        return collect(PHAsset.fetchAssets(withLocalIdentifiers: ids, options: nil))
+
+        assetLock.lock()
+        var found: [PHAsset] = []
+        var missing: [String] = []
+        for id in ids {
+            if let asset = assetsByIdentifier[id] {
+                found.append(asset)
+            } else {
+                missing.append(id)
+            }
+        }
+        assetLock.unlock()
+
+        guard !missing.isEmpty else { return found }
+
+        let fetched = collect(PHAsset.fetchAssets(withLocalIdentifiers: missing, options: nil))
+        return found + fetched
+    }
+
+    /// Drops assets the app has deleted, so the memo cannot hand back a stale
+    /// object after a clean-up.
+    func forget(identifiers: [String]) {
+        assetLock.lock()
+        for id in identifiers { assetsByIdentifier.removeValue(forKey: id) }
+        assetLock.unlock()
     }
 
     // MARK: - Images
@@ -165,6 +210,7 @@ final class PhotoKitDataSource: NSObject, @unchecked Sendable {
             try await PHPhotoLibrary.shared().performChanges {
                 PHAssetChangeRequest.deleteAssets(assets as NSArray)
             }
+            forget(identifiers: identifiers)
             return identifiers
         } catch {
             throw Self.map(error)

@@ -157,6 +157,7 @@ final class ReviewViewModel {
         }
 
         stage = .finished(result)
+        result.hasFailures ? Haptics.warning() : Haptics.success()
         results.record(result, storageAfter: getStorageSnapshot())
         router.showResult()
     }
