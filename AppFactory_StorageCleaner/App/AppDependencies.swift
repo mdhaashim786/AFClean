@@ -17,6 +17,7 @@ final class AppDependencies {
     // MARK: - Shared infrastructure
 
     private let photoKit = PhotoKitDataSource()
+    private let contactStore = ContactStoreDataSource()
     private let analysisCache = AssetAnalysisCache()
 
     // MARK: - Repositories
@@ -26,6 +27,7 @@ final class AppDependencies {
     let photoAssets: PhotoAssetRepository
     let thumbnails: ThumbnailRepository
     let imageHashes: ImageHashRepository
+    let contacts: ContactRepository
 
     // MARK: - Use cases
 
@@ -34,6 +36,8 @@ final class AppDependencies {
     let scanSimilarPhotos: ScanSimilarPhotosUseCase
     let fetchScreenshots: FetchScreenshotsUseCase
     let fetchLargeVideos: FetchLargeVideosUseCase
+    let scanDuplicateContacts: ScanDuplicateContactsUseCase
+    let executeCleanup: ExecuteCleanupUseCase
 
     // MARK: - Shared app-scoped state
 
@@ -49,9 +53,12 @@ final class AppDependencies {
         let thumbnails = ThumbnailRepositoryImpl(source: photoKit)
         let imageHashes = ImageHashRepositoryImpl(source: photoKit, cache: analysisCache)
 
+        let contacts = ContactRepositoryImpl(source: contactStore)
+
         self.photoAssets = photoAssets
         self.thumbnails = thumbnails
         self.imageHashes = imageHashes
+        self.contacts = contacts
 
         let requestAccess = RequestAccessUseCase(permissions: permissions)
         self.requestAccess = requestAccess
@@ -59,6 +66,8 @@ final class AppDependencies {
         self.scanSimilarPhotos = ScanSimilarPhotosUseCase(photos: photoAssets, hashes: imageHashes)
         self.fetchScreenshots = FetchScreenshotsUseCase(photos: photoAssets)
         self.fetchLargeVideos = FetchLargeVideosUseCase(photos: photoAssets)
+        self.scanDuplicateContacts = ScanDuplicateContactsUseCase(contacts: contacts)
+        self.executeCleanup = ExecuteCleanupUseCase(photos: photoAssets, contacts: contacts)
 
         self.permissionsViewModel = PermissionsViewModel(access: requestAccess)
     }
