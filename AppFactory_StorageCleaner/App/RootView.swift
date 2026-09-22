@@ -6,16 +6,24 @@
 import SwiftUI
 
 struct RootView: View {
-    var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-            Text("AF Clean")
-                .font(.largeTitle.bold())
-                .foregroundStyle(.white)
-        }
-    }
-}
 
-#Preview {
-    RootView()
+    let dependencies: AppDependencies
+
+    var body: some View {
+        Group {
+            if dependencies.permissionsViewModel.shouldShowPriming {
+                PermissionPrimerView(viewModel: dependencies.permissionsViewModel)
+                    .transition(.opacity)
+            } else {
+                DashboardView(
+                    viewModel: DashboardViewModel(
+                        getStorageSnapshot: dependencies.getStorageSnapshot,
+                        permissions: dependencies.permissionsViewModel
+                    )
+                )
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: dependencies.permissionsViewModel.shouldShowPriming)
+    }
 }
