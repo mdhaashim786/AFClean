@@ -5,24 +5,28 @@
 
 import Foundation
 
-/// Fetch photos, fingerprint them, group the matches.
+/// Fetch photos, fingerprint them, group the matches, then verify the weakest
+/// groups before showing them.
 ///
-/// Emits progress as it goes so the UI can stay honest about a scan that may
-/// take a while on first run.
+/// Emits progress throughout so the UI can stay honest about a scan that may
+/// take a while the first time it runs.
 struct ScanSimilarPhotosUseCase: Sendable {
 
     private let photos: PhotoAssetRepository
     private let hashes: ImageHashRepository
     private let grouper: SimilarityGrouper
+    private let verificationThreshold: Float
 
     init(
         photos: PhotoAssetRepository,
         hashes: ImageHashRepository,
-        grouper: SimilarityGrouper = SimilarityGrouper()
+        grouper: SimilarityGrouper = SimilarityGrouper(),
+        verificationThreshold: Float = 0.6
     ) {
         self.photos = photos
         self.hashes = hashes
         self.grouper = grouper
+        self.verificationThreshold = verificationThreshold
     }
 
     func callAsFunction(
@@ -63,6 +67,7 @@ struct ScanSimilarPhotosUseCase: Sendable {
         )
 
         let groups = grouper.group(assets: assets, hashes: fingerprints)
+        let verified = await verify(groups)
 
         onProgress(
             ScanProgress(
@@ -72,6 +77,54 @@ struct ScanSimilarPhotosUseCase: Sendable {
                 elapsed: Date().timeIntervalSince(started)
             )
         )
-        return groups
+        return verified
+    }
+
+    // MARK: - Verification
+
+    /// Re-checks `.similar` groups with Vision.
+    ///
+    /// Those are the ones held together only by a loose hash match between
+    /// photos taken at unrelated times — by far the likeliest place for a false
+    /// positive, and the most annoying place to have one, since the user could
+    /// delete a photo that is not actually a duplicate.
+    ///
+    /// Exact duplicates and bursts are left alone: they are already reliable,
+    /// and they are the bulk of the results, so skipping them keeps this cheap.
+    /// If Vision cannot answer, the member is kept — we never drop a result on
+    /// the strength of a failed check.
+    private func verify(_ groups: [PhotoGroup]) async -> [PhotoGroup] {
+        var verified: [PhotoGroup] = []
+        verified.reserveCapacity(groups.count)
+
+        for group in groups {
+            guard group.reason == .similar else {
+                verified.append(group)
+                continue
+            }
+            guard !Task.isCancelled else { return verified + groups[verified.count...] }
+
+            let best = group.best
+            var kept: [MediaAsset] = [best]
+
+            for candidate in group.others {
+                let distance = await hashes.featureDistance(between: best.id, and: candidate.id)
+                if let distance, distance > verificationThreshold { continue }
+                kept.append(candidate)
+            }
+
+            guard kept.count > 1 else { continue }
+
+            verified.append(
+                PhotoGroup(
+                    id: group.id,
+                    assets: group.assets.filter { asset in kept.contains(where: { $0.id == asset.id }) },
+                    bestAssetID: best.id,
+                    reason: group.reason
+                )
+            )
+        }
+
+        return verified
     }
 }
