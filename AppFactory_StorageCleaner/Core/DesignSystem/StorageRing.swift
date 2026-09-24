@@ -19,9 +19,16 @@ struct StorageRing: View {
 
     private var lineWidth: CGFloat { diameter * 0.085 }
 
+    /// Below this the arc is shorter than its own rounded line cap and renders
+    /// as a stray dot on the ring, which reads as a rendering glitch rather
+    /// than information. A few hundred megabytes against a 128 GB device is
+    /// well under it, so the arc is simply omitted.
+    private static let minimumVisibleFraction = 0.015
+
     private var reclaimableFraction: Double {
         guard snapshot.isKnown, reclaimableBytes > 0 else { return 0 }
-        return min(snapshot.usedFraction, Double(reclaimableBytes) / Double(snapshot.totalBytes))
+        let fraction = min(snapshot.usedFraction, Double(reclaimableBytes) / Double(snapshot.totalBytes))
+        return fraction >= Self.minimumVisibleFraction ? fraction : 0
     }
 
     var body: some View {

@@ -111,6 +111,20 @@ final class ReviewViewModel {
         selection.deselect(asset.id)
     }
 
+    /// Empties the whole basket in one go, rather than making the user tap the
+    /// cross on every single row.
+    func discardAll() {
+        selection.clearAll()
+        Haptics.select()
+    }
+
+    /// Same, for one category — useful when the user wants to keep their photo
+    /// choices but drop, say, every video.
+    func discard(_ category: CleanCategory) {
+        selection.clear(category)
+        Haptics.select()
+    }
+
     func removeContactDecision(_ decision: BuildCleanupPlanUseCase.ContactDecision) {
         selection.clearDecision(for: decision.group.id)
     }

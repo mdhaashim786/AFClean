@@ -134,7 +134,10 @@ struct PhotoGridCell: View {
     var body: some View {
         Button(action: onTap) {
             AssetThumbnail(assetID: asset.id, repository: thumbnails, maxPixel: 300)
-                .aspectRatio(1, contentMode: .fill)
+                // .fit, not .fill: the cell must sit inside the width the grid
+                // offers it. .fill makes it exceed that and overlap its
+                // neighbours and the navigation bar.
+                .aspectRatio(1, contentMode: .fit)
                 .clipShape(.rect(cornerRadius: Theme.Radius.small))
                 .overlay {
                     RoundedRectangle(cornerRadius: Theme.Radius.small)

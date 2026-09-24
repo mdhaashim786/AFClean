@@ -29,6 +29,17 @@ struct ReviewView: View {
         .background(AFBackground())
         .navigationTitle("Review")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if !viewModel.isEmpty {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Discard all", role: .destructive) {
+                        viewModel.discardAll()
+                    }
+                    .font(Theme.Typography.callout)
+                    .disabled(viewModel.isDeleting)
+                }
+            }
+        }
         .safeAreaInset(edge: .bottom) {
             if !viewModel.isEmpty {
                 deleteBar
@@ -105,7 +116,10 @@ struct ReviewView: View {
             AFSectionHeader(
                 title: category.title,
                 subtitle: "\(Format.count(assets.count, singular: category.itemNoun.singular, plural: category.itemNoun.plural)) · \(Format.bytes(assets.totalBytes))"
-            )
+            ) {
+                Button("Discard") { viewModel.discard(category) }
+                    .buttonStyle(AFSecondaryButtonStyle())
+            }
 
             ForEach(assets) { asset in
                 ReviewRow(
@@ -125,7 +139,10 @@ struct ReviewView: View {
                     viewModel.plan.contactRemovalCount,
                     singular: "duplicate"
                 )
-            )
+            ) {
+                Button("Discard") { viewModel.discard(.duplicateContacts) }
+                    .buttonStyle(AFSecondaryButtonStyle())
+            }
 
             ForEach(viewModel.contactDecisions, id: \.group.id) { decision in
                 ContactReviewRow(
