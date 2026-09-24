@@ -36,7 +36,12 @@ final class PhotoKitDataSource: NSObject, @unchecked Sendable {
 
     /// Screenshots, newest first — the order a user expects to review them in.
     func fetchScreenshotAssets() -> [PHAsset] {
-        fetchImages()
+        #if DEBUG
+        if DebugLaunchRoute.treatsPhotosAsScreenshots {
+            return Array(fetchImages().reversed())
+        }
+        #endif
+        return fetchImages()
             .filter { $0.mediaSubtypes.contains(.photoScreenshot) }
             .reversed()
     }

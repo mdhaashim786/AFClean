@@ -27,6 +27,13 @@ enum PHAssetMapper {
 
     static func kind(of asset: PHAsset) -> MediaAsset.Kind {
         if asset.mediaType == .video { return .video }
+        #if DEBUG
+        // The simulator cannot hold real screenshots — `simctl addmedia` adds
+        // plain photos and the screenshot subtype is only set by the system at
+        // capture time. Without this the Screenshots screen can never be
+        // exercised anywhere but a physical device.
+        if DebugLaunchRoute.treatsPhotosAsScreenshots { return .screenshot }
+        #endif
         return asset.mediaSubtypes.contains(.photoScreenshot) ? .screenshot : .photo
     }
 }

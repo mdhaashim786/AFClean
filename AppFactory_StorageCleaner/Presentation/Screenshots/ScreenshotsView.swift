@@ -67,7 +67,13 @@ struct ScreenshotsView: View {
 
     private var grid: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: Theme.Spacing.xl) {
+            // A plain VStack, not LazyVStack. A LazyVGrid nested inside a
+            // LazyVStack mis-reports its own height, which leaves the grid's
+            // hit region overlapping the section header above it: the header's
+            // button drew correctly but every tap on it was swallowed by a
+            // photo cell. Only the sections are eager here — the cells inside
+            // each LazyVGrid are still lazy, which is where it matters.
+            VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
                 HStack {
                     Text(viewModel.summary)
                         .font(Theme.Typography.caption)
@@ -87,6 +93,10 @@ struct ScreenshotsView: View {
                             }
                             .buttonStyle(AFSecondaryButtonStyle())
                         }
+                        // The grid below reports a hit region that reaches up
+                        // over this header, so without an explicit z-order the
+                        // photo cells swallow every tap meant for the button.
+                        .zIndex(1)
 
                         LazyVGrid(columns: columns, spacing: 6) {
                             ForEach(section.assets) { asset in

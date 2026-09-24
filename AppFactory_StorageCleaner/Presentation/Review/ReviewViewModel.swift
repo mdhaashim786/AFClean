@@ -118,12 +118,6 @@ final class ReviewViewModel {
         Haptics.select()
     }
 
-    /// Same, for one category — useful when the user wants to keep their photo
-    /// choices but drop, say, every video.
-    func discard(_ category: CleanCategory) {
-        selection.clear(category)
-        Haptics.select()
-    }
 
     func removeContactDecision(_ decision: BuildCleanupPlanUseCase.ContactDecision) {
         selection.clearDecision(for: decision.group.id)

@@ -33,6 +33,12 @@ enum DebugLaunchRoute {
         }
     }
 
+    /// Makes every photo report as a screenshot, so the Screenshots screen can
+    /// be tested on the simulator.
+    static var treatsPhotosAsScreenshots: Bool {
+        ProcessInfo.processInfo.arguments.contains("-afPhotosAsScreenshots")
+    }
+
     /// Mirrors what the user would do by hand — select every non-keeper — so
     /// the review screen has something real to show.
     static func shouldPreselect() -> Bool {

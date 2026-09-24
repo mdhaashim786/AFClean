@@ -71,7 +71,10 @@ struct SimilarPhotosView: View {
 
     private var list: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: Theme.Spacing.xl, pinnedViews: []) {
+            // Plain VStack — see ScreenshotsView: a LazyVGrid nested in a
+            // LazyVStack leaves the grid hit-testable over the header, which
+            // stops the per-group button from ever receiving a tap.
+            VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
                 summaryHeader
 
                 ForEach(viewModel.groups) { group in
@@ -105,6 +108,9 @@ struct SimilarPhotosView: View {
                 }
                 .buttonStyle(AFSecondaryButtonStyle())
             }
+            // See ScreenshotsView: the grid's hit region overlaps the header,
+            // so the button needs to be explicitly above it.
+            .zIndex(1)
 
             LazyVGrid(columns: columns, spacing: 6) {
                 ForEach(group.assets) { asset in

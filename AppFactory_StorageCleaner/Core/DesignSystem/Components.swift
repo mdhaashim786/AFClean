@@ -157,20 +157,38 @@ struct AFEmptyState: View {
 
 // MARK: - Layout helpers
 
-/// Section heading used above grids and lists.
-struct AFSectionHeader: View {
+/// Section heading used above grids and lists, optionally with a control on
+/// the trailing edge.
+///
+/// Two details here are load-bearing, both learned the hard way:
+///
+/// The row is centre-aligned, not `.firstTextBaseline`. Baseline alignment
+/// lines up the *text* inside a padded button with the title's baseline, which
+/// pushes the button's frame above the top of the HStack. SwiftUI still draws
+/// a child that overflows its parent, but it will not hit-test it — so the
+/// button looked perfectly normal and silently ignored every tap.
+///
+/// The trailing content is a generic child rather than a stored `AnyView`.
+/// Building it once in `init` and holding it erases the view's identity, which
+/// costs correct state and animation on whatever the caller puts there.
+struct AFSectionHeader<Trailing: View>: View {
+
     let title: String
     var subtitle: String?
-    var trailing: AnyView?
+    @ViewBuilder let trailing: Trailing
 
-    init(title: String, subtitle: String? = nil, @ViewBuilder trailing: () -> some View = { EmptyView() }) {
+    init(
+        title: String,
+        subtitle: String? = nil,
+        @ViewBuilder trailing: () -> Trailing
+    ) {
         self.title = title
         self.subtitle = subtitle
-        self.trailing = AnyView(trailing())
+        self.trailing = trailing()
     }
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline) {
+        HStack(alignment: .center, spacing: Theme.Spacing.s) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(Theme.Typography.headline)
@@ -184,6 +202,12 @@ struct AFSectionHeader: View {
             Spacer(minLength: Theme.Spacing.s)
             trailing
         }
+    }
+}
+
+extension AFSectionHeader where Trailing == EmptyView {
+    init(title: String, subtitle: String? = nil) {
+        self.init(title: title, subtitle: subtitle, trailing: { EmptyView() })
     }
 }
 
